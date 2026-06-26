@@ -33,11 +33,35 @@ passwd -l "${DEPLOY_USER}"
 
 DEPLOY_HOME="/home/${DEPLOY_USER}"
 mkdir -p "${DEPLOY_HOME}/.ssh"
-if [ -f /root/.ssh/authorized_keys ]; then
-  cp /root/.ssh/authorized_keys "${DEPLOY_HOME}/.ssh/authorized_keys"
+
+# Find SSH keys from the admin user (cloud VMs use non-root admin users)
+SOURCE_KEYS=""
+# 1. Check the user who invoked sudo (e.g., azureuser ran 'sudo bash setup.sh')
+if [ -n "${SUDO_USER:-}" ] && [ -f "/home/${SUDO_USER}/.ssh/authorized_keys" ]; then
+  SOURCE_KEYS="/home/${SUDO_USER}/.ssh/authorized_keys"
 fi
+# 2. Fall back to common cloud admin users
+if [ -z "${SOURCE_KEYS}" ]; then
+  for admin_user in azureuser ubuntu ec2-user admin; do
+    if [ -f "/home/${admin_user}/.ssh/authorized_keys" ]; then
+      SOURCE_KEYS="/home/${admin_user}/.ssh/authorized_keys"
+      break
+    fi
+  done
+fi
+# 3. Last resort: root
+if [ -z "${SOURCE_KEYS}" ] && [ -f /root/.ssh/authorized_keys ]; then
+  SOURCE_KEYS="/root/.ssh/authorized_keys"
+fi
+
+if [ -n "${SOURCE_KEYS}" ]; then
+  cp "${SOURCE_KEYS}" "${DEPLOY_HOME}/.ssh/authorized_keys"
+  echo "  → Copied SSH keys from ${SOURCE_KEYS}"
+else
+  echo "  ⚠ WARNING: No authorized_keys found. You must add SSH keys manually."
+fi
+
 chmod 700 "${DEPLOY_HOME}/.ssh"
-# Only set permissions if the file exists
 if [ -f "${DEPLOY_HOME}/.ssh/authorized_keys" ]; then
   chmod 600 "${DEPLOY_HOME}/.ssh/authorized_keys"
 fi
