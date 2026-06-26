@@ -11,7 +11,10 @@ echo "[1/6] Creating deploy user: ${DEPLOY_USER}"
 if ! id "${DEPLOY_USER}" &>/dev/null; then
   useradd -m -s /bin/bash "${DEPLOY_USER}"
 fi
-usermod -aG docker "${DEPLOY_USER}"
+# Add to docker group if it exists (Docker may not be installed yet)
+if getent group docker > /dev/null 2>&1; then
+  usermod -aG docker "${DEPLOY_USER}"
+fi
 passwd -l "${DEPLOY_USER}"
 
 DEPLOY_HOME="/home/${DEPLOY_USER}"
@@ -50,7 +53,12 @@ for key in "${!SSH_OPTS[@]}"; do
     echo "${key} ${val}" >> "${SSHD_CONFIG}"
   fi
 done
-sshd -t && systemctl restart sshd
+# Ubuntu 24.04 uses 'ssh', older versions use 'sshd'
+SSH_SERVICE="sshd"
+if systemctl list-unit-files ssh.service > /dev/null 2>&1; then
+  SSH_SERVICE="ssh"
+fi
+sshd -t && systemctl restart "${SSH_SERVICE}"
 
 # ── 3. UFW Firewall ────────────────────────────────────────────────────────
 echo "[3/6] Configuring UFW"
