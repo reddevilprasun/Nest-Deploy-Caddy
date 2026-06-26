@@ -1,0 +1,84 @@
+{
+	# Global options
+	email admin@orbithive.app
+
+	# Expose admin/metrics endpoint on internal port only (Prometheus scrapes this)
+	admin 0.0.0.0:2019
+
+	# ACME: uses Let's Encrypt by default
+	# Swap to ZeroSSL if LE rate-limits become a problem:
+	# acme_ca https://acme.zerossl.com/v2/DV90
+
+	# Disable telemetry
+	grace_period 10s
+}
+
+# ── Shared security headers snippet ───────────────────────────────────────────
+(security_headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options    "nosniff"
+		X-Frame-Options           "DENY"
+		Referrer-Policy           "strict-origin-when-cross-origin"
+		Permissions-Policy        "camera=(), microphone=(), geolocation=(), payment=()"
+		-Server
+		-X-Powered-By
+	}
+}
+
+# ── API ───────────────────────────────────────────────────────────────────────
+api.orbithive.app {
+	import security_headers
+
+	encode gzip
+
+	reverse_proxy api:3000 {
+		# Health check — Caddy removes unhealthy upstreams automatically
+		health_uri      /health
+		health_interval 30s
+		health_timeout  5s
+
+		# Forward real client IP
+		header_up X-Real-IP        {remote_host}
+		header_up X-Forwarded-For  {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+
+		# Upstream timeouts
+		transport http {
+			dial_timeout       5s
+			response_header_timeout 60s
+		}
+	}
+
+	log {
+		output stdout
+		format json
+		level  WARN
+	}
+}
+
+# ── Grafana (monitoring) ──────────────────────────────────────────────────────
+monitor.orbithive.app {
+	import security_headers
+
+	# IP allowlist — restrict to your VPN/office CIDR.
+	# Replace 10.0.0.0/8 with your actual IP range before deploying.
+	@denied not remote_ip 10.0.0.0/8 127.0.0.1/32
+	respond @denied "403 Forbidden" 403
+
+	reverse_proxy grafana:3000 {
+		header_up X-Real-IP       {remote_host}
+		header_up X-Forwarded-For {remote_host}
+	}
+
+	log {
+		output stdout
+		format json
+		level  WARN
+	}
+}
+
+# ── Redirect apex to www (optional) ──────────────────────────────────────────
+orbithive.app {
+	redir https://www.orbithive.app{uri} permanent
+}
