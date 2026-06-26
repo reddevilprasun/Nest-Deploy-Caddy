@@ -1,14 +1,15 @@
-ARG NODE_VERSION=24
+ARG NODE_VERSION=22
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 1 — deps: install ALL dependencies (dev included for build)
 # ─────────────────────────────────────────────────────────────────────────────
 FROM node:${NODE_VERSION}-alpine AS deps
 
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml ./
+RUN corepack install
 COPY prisma ./prisma/
 
 RUN pnpm install --frozen-lockfile
