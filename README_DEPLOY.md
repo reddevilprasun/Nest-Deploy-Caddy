@@ -245,21 +245,33 @@ Go to **Settings** → **Environments** → `production` → **Add secret** for 
 
 ### 7.3 Generating the Deployer SSH Key
 
-On your local machine:
+> **Azure VM note:** Azure does not allow `root` SSH. Use your VM's admin user
+> (`azureuser`) with the `.pem` key you downloaded from the Azure portal.
+
+**Step 1 — Generate the deploy key on your local machine:**
 ```bash
-# Generate a dedicated deploy key (no passphrase — it's used by CI)
+# Generate a dedicated deploy key (no passphrase — CI needs unattended access)
 ssh-keygen -t ed25519 -C "github-actions-deploy" -f ~/.ssh/orbithive_deploy -N ""
+```
 
-# Add the PUBLIC key to the VM's deployer user
-ssh root@<YOUR_VM_IP> \
-  "echo '$(cat ~/.ssh/orbithive_deploy.pub)' >> /home/deployer/.ssh/authorized_keys"
+**Step 2 — Add the public key to the `deployer` user on the VM:**
+```bash
+# Azure uses azureuser + your .pem key (NOT root)
+ssh -i ~/.ssh/whatsappautomation_key-2.pem azureuser@4.213.224.180 \
+  "echo '$(cat ~/.ssh/orbithive_deploy.pub)' | sudo tee -a /home/deployer/.ssh/authorized_keys > /dev/null"
+```
 
-# Verify login works
-ssh -i ~/.ssh/orbithive_deploy deployer@<YOUR_VM_IP>
+**Step 3 — Verify the deploy key works:**
+```bash
+ssh -i ~/.ssh/orbithive_deploy deployer@4.213.224.180
+# Should log you in without a password prompt
+```
 
-# Copy the PRIVATE key content — this goes into the GitHub Secret VM_SSH_KEY
+**Step 4 — Copy the private key into GitHub Secrets:**
+```bash
 cat ~/.ssh/orbithive_deploy
 ```
+Copy the **entire output** (including the `-----BEGIN OPENSSH PRIVATE KEY-----` and `-----END OPENSSH PRIVATE KEY-----` lines) into the `VM_SSH_KEY` GitHub secret.
 
 Copy the entire output of `cat ~/.ssh/orbithive_deploy` (including `-----BEGIN...` lines) into the `VM_SSH_KEY` secret.
 
