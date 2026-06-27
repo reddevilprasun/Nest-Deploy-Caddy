@@ -105,6 +105,7 @@ services:
       - monitoring
     depends_on:
       - prometheus
+      - loki
     logging: *default-logging
 
   loki:
