@@ -5,7 +5,9 @@
 	# Expose admin/metrics endpoint on internal port only (Prometheus scrapes this)
 	admin 0.0.0.0:2019
 
-	metrics
+	servers {
+    metrics
+  }
 
 	# ACME: uses Let's Encrypt by default
 	# Swap to ZeroSSL if LE rate-limits become a problem:
