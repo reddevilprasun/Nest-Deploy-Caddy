@@ -6,6 +6,9 @@ server:
 common:
   path_prefix: /loki
   replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
 
 schema_config:
   configs:
