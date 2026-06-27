@@ -82,7 +82,7 @@ jobs:
           host:     ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
           key:      ${{ secrets.VM_SSH_KEY }}
-          source:   "docker-compose.prod.yml,caddy/,monitoring/"
+          source:   "Dockerfile.caddy,docker-compose.prod.yml,caddy/,monitoring/"
           target:   /opt/orbithive
 
       - name: Write .env on VM
