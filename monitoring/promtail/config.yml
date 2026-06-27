@@ -11,7 +11,31 @@ scrape_configs:
   - job_name: docker
     docker_sd_configs:
       - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
 
     relabel_configs:
+      # Strip the leading "/" from Docker container names
+      # e.g. "/orbithive-caddy-1" → "orbithive-caddy-1"
       - source_labels: ['__meta_docker_container_name']
+        regex: '/?(.*)'
         target_label: container
+
+      # Extract the service name from the compose container name
+      # e.g. "orbithive-caddy-1" → "caddy"
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/?[^-]+-([^-]+)-.*'
+        target_label: service
+
+      # Add compose project label
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/?([^-]+)-.*'
+        target_label: compose_project
+
+    pipeline_stages:
+      # Try to parse JSON logs (Caddy and NestJS output JSON)
+      - json:
+          expressions:
+            level: level
+            msg: msg
+      - labels:
+          level:

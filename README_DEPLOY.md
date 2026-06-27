@@ -56,9 +56,10 @@ Internet
 │  │         └───────┬───────┘        │   │
 │  │    orbithive_monitoring (internal)│   │
 │  │              ┌──┴────────┐        │   │
-│  │              │Prometheus │        │   │
-│  │              │ :9090     │        │   │
-│  │              └───────────┘        │   │
+│  │       ┌──────┼───────────┼──────┐ │   │
+│  │       │Prometheus│   │  Loki    │ │   │
+│  │       │ :9090    │   │ :3100    │ │   │
+│  │       └──────────┘   └──────────┘ │   │
 │  └──────────────────────────────────┘   │
 └─────────────────────────────────────────┘
     │
@@ -72,7 +73,7 @@ External Cloud PostgreSQL
 | Network | Internal only | Services |
 |---|---|---|
 | `orbithive_proxy` | No (internet-facing) | Caddy, API, Grafana |
-| `orbithive_monitoring` | **Yes** | API, Prometheus, Grafana, Caddy |
+| `orbithive_monitoring` | **Yes** | API, Prometheus, Loki, Promtail, Grafana, Caddy |
 
 Prometheus is **never** directly reachable from the internet. Caddy's admin port `:2019` (metrics) is only accessible on the internal monitoring network.
 
@@ -91,10 +92,14 @@ orbithive/
 │
 ├── monitoring/
 │   ├── prometheus.yml          # Scrape targets
+│   ├── loki/
+│   │   └── local-config.yaml   # Loki log storage configuration
+│   ├── promtail/
+│   │   └── config.yml          # Scrapes Docker logs and sends to Loki
 │   └── grafana/
 │       └── provisioning/
 │           ├── datasources/
-│           │   └── prometheus.yml   # Auto-wires Prometheus → Grafana
+│           │   └── prometheus.yml   # Auto-wires Prometheus & Loki → Grafana
 │           └── dashboards/
 │               └── dashboards.yml   # Loads dashboards from this dir
 │
@@ -287,14 +292,15 @@ If your image would be `ghcr.io/orbithive/api`, then your namespace is `orbithiv
 
 ### 8.1 Update the Caddyfile
 
-Before deploying, open `caddy/Caddyfile` and update the Grafana IP allowlist to your actual IP range:
+By default, the Grafana IP allowlist in `caddy/Caddyfile` is **disabled** so you can access the dashboard from anywhere. 
+Make sure you have set a strong `GRAFANA_ADMIN_PASSWORD` in your GitHub Secrets.
+
+If you have a static IP or VPN, you should enable the restriction by uncommenting the `@denied` lines in the Caddyfile and replacing `10.0.0.0/8` with your actual IP range:
 
 ```caddy
-# Replace 10.0.0.0/8 with your VPN/office CIDR
-@denied not remote_ip 10.0.0.0/8 127.0.0.1/32
+# @denied not remote_ip 10.0.0.0/8 127.0.0.1/32
+# respond @denied "403 Forbidden" 403
 ```
-
-If you want to access Grafana from anywhere temporarily (not recommended for production), remove the `@denied` block — but set a strong password.
 
 ### 8.2 Trigger the First Deploy
 
@@ -348,7 +354,7 @@ ssh -L 3001:localhost:3000 -N deployer@<VM_IP> &
 
 Log in with `GRAFANA_ADMIN_USER` and `GRAFANA_ADMIN_PASSWORD`.
 
-The **Prometheus datasource is already provisioned** — no manual setup needed.
+The **Prometheus and Loki datasources are already provisioned** — no manual setup needed. You can instantly query logs via the **Explore** tab using Loki, or view metrics using Prometheus.
 
 ### 9.2 Import Recommended Dashboards
 
