@@ -23,8 +23,17 @@ scrape_configs:
       # Extract the service name from the compose container name
       # e.g. "orbithive-caddy-1" → "caddy"
       - source_labels: ['__meta_docker_container_name']
-        regex: '/?[^-]+-([^-]+)-.*'
+        regex: '/?[^-]+-([^-]+)-\d+'
         target_label: service
+
+      # Set "app" label (same as service) — required by Grafana dashboard 20802
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/?[^-]+-([^-]+)-\d+'
+        target_label: app
+
+      # Set standard "job" label
+      - target_label: job
+        replacement: docker
 
       # Add compose project label
       - source_labels: ['__meta_docker_container_name']
