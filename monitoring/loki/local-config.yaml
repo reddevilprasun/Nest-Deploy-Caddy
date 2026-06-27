@@ -1,5 +1,8 @@
 auth_enabled: false
 
+# Run all Loki components in a single process
+target: all
+
 server:
   http_listen_port: 3100
   grpc_listen_port: 9096
@@ -17,6 +20,18 @@ common:
       chunks_directory: /loki/chunks
       rules_directory: /loki/rules
 
+ingester:
+  lifecycler:
+    address: 127.0.0.1
+    ring:
+      kvstore:
+        store: inmemory
+      replication_factor: 1
+    final_sleep: 0s
+  chunk_idle_period: 1h
+  max_chunk_age: 2h
+  chunk_retain_period: 30s
+
 schema_config:
   configs:
     - from: 2024-01-01
@@ -30,8 +45,16 @@ schema_config:
 limits_config:
   allow_structured_metadata: true
   volume_enabled: true
+  reject_old_samples: true
+  reject_old_samples_max_age: 168h  # 7 days
 
-# Single-process mode (no distributed components needed for single VM)
 compactor:
   working_directory: /loki/compactor
   compaction_interval: 10m
+
+query_range:
+  results_cache:
+    cache:
+      embedded_cache:
+        enabled: true
+        max_size_mb: 100
