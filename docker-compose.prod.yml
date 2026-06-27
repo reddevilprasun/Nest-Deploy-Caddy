@@ -10,7 +10,9 @@ services:
 
   # ── Caddy ─────────────────────────────────────────────────────────────────
   caddy:
-    image: caddy:2.8-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile.caddy
     restart: unless-stopped
     ports:
       - "80:80"
