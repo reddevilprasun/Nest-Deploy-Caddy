@@ -47,6 +47,8 @@ limits_config:
   volume_enabled: true
   reject_old_samples: true
   reject_old_samples_max_age: 168h  # 7 days
+  # Allow app=~".*" style matchers used by community dashboards
+  allow_empty_matchers: true
 
 compactor:
   working_directory: /loki/compactor
